@@ -1,7 +1,7 @@
 import asyncio
 import threading
 from flask import Flask
-from pyrogram import Client, filters
+from telethon import TelegramClient, events
 
 # =========================================================
 # ТВОИ ДАННЫЕ
@@ -9,23 +9,22 @@ from pyrogram import Client, filters
 
 api_id = 39742480
 api_hash = '62bbd4b780b3ca12d7bc9ae75276d88e'
-bot_token = '8793166397:AAEku-GdHMyj-vj46VmjX8pu8wcThV2j3Do'
+
+# Создаём клиент от имени ТВОЕГО аккаунта (не бота)
+client = TelegramClient('session_name', api_id, api_hash)
 
 SOURCE_CHAT = '@baraholer'
 DEST_CHAT = '@pugatchev999'
 
 # =========================================================
-# КОД БОТА-ПЕРЕСЫЛЬЩИКА (ИСПРАВЛЕННЫЙ)
+# КОД ПЕРЕСЫЛЬЩИКА
 # =========================================================
 
-# Создаём клиент без запуска event loop
-app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
-
-@app.on_message(filters.chat(SOURCE_CHAT) & filters.text)
-async def forward_message(client, message):
+@client.on(events.NewMessage(chats=SOURCE_CHAT))
+async def forward_message(event):
     try:
-        await client.send_message(DEST_CHAT, message.text)
-        print(f'✅ Переслано: {message.text[:50]}...')
+        await client.send_message(DEST_CHAT, event.message)
+        print('✅ Переслано!')
     except Exception as e:
         print(f'❌ Ошибка: {e}')
 
@@ -43,17 +42,14 @@ def run_flask():
     flask_app.run(host='0.0.0.0', port=8080)
 
 def run_bot():
-    # Создаём новый event loop для потока
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
     print('🚀 Бот-пересыльщик запущен!')
-    app.run()
+    client.start()
+    client.run_until_disconnected()
 
 if __name__ == '__main__':
-    # Запускаем бота в отдельном потоке с правильным event loop
     bot_thread = threading.Thread(target=run_bot)
     bot_thread.start()
-    
-    # Запускаем Flask в основном потоке
     run_flask()
