@@ -1,0 +1,59 @@
+import asyncio
+import threading
+from flask import Flask
+from pyrogram import Client, filters
+
+# =========================================================
+# ТВОИ ДАННЫЕ
+# =========================================================
+
+api_id = 39742480
+api_hash = '62bbd4b780b3ca12d7bc9ae75276d88e'
+bot_token = '8793166397:AAEku-GdHMyj-vj46VmjX8pu8wcThV2j3Do'
+
+SOURCE_CHAT = '@baraholer'
+DEST_CHAT = '@pugatchev999'
+
+# =========================================================
+# КОД БОТА-ПЕРЕСЫЛЬЩИКА (ИСПРАВЛЕННЫЙ)
+# =========================================================
+
+# Создаём клиент без запуска event loop
+app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
+
+@app.on_message(filters.chat(SOURCE_CHAT) & filters.text)
+async def forward_message(client, message):
+    try:
+        await client.send_message(DEST_CHAT, message.text)
+        print(f'✅ Переслано: {message.text[:50]}...')
+    except Exception as e:
+        print(f'❌ Ошибка: {e}')
+
+# =========================================================
+# ВЕБ-СЕРВЕР ДЛЯ RENDER
+# =========================================================
+
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def index():
+    return "Bot is running!"
+
+def run_flask():
+    flask_app.run(host='0.0.0.0', port=8080)
+
+def run_bot():
+    # Создаём новый event loop для потока
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    print('🚀 Бот-пересыльщик запущен!')
+    app.run()
+
+if __name__ == '__main__':
+    # Запускаем бота в отдельном потоке с правильным event loop
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.start()
+    
+    # Запускаем Flask в основном потоке
+    run_flask()
